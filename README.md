@@ -3,7 +3,7 @@ RFLink
 
 This is an Arduino library for managing level 2 ("link") communication with RF
 devices.
-Tested and used with Texa Instruments (tm) CC1101 device.
+Tested and used with Texas Instruments (tm) CC1101 device.
 Works on top of arduino-CC1101 library (see below).
 
 The link layer implements:
