@@ -1,5 +1,5 @@
 gv.sh
 mgmtusb.sh
 clean.sh
-examples/sender/Makefile
-examples/receiver/Makefile
+examples/example1/sender/Makefile
+examples/example1/receiver/Makefile
