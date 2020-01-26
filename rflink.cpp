@@ -177,24 +177,22 @@ const char er05[] PROGMEM = "send I/O error";
 const char er06[] PROGMEM = "bad send arguments";
 // ERR_SEND_NO_ACK_RCVD
 const char er07[] PROGMEM = "no ack received";
-// ERR_RECEIVE_DATA_RECLAIMED_TOO_LATE
-const char er08[] PROGMEM = "data expired before retrieval (system too busy?)";
 // ERR_TASK_CREATED_OK
-const char er09[] PROGMEM = "task created ok";
+const char er08[] PROGMEM = "task created ok";
 // ERR_UNABLE_TO_CREATE_TASK
-const char er10[] PROGMEM = "unable to create task";
+const char er09[] PROGMEM = "unable to create task";
 // ERR_UNKNOWN_TASKID
-const char er11[] PROGMEM = "unknown taskid";
+const char er10[] PROGMEM = "unknown taskid";
 // ERR_UNDEFINED
-const char er12[] PROGMEM = "undefined (no return code available)";
+const char er11[] PROGMEM = "undefined (no return code available)";
 // ERR_TASK_UNDERWAY
-const char er13[] PROGMEM = "task is underway";
+const char er12[] PROGMEM = "task is underway";
 // ERR_TIMEOUT
-const char er14[] PROGMEM = "timeout";
+const char er13[] PROGMEM = "timeout";
 
 const char *const err_string_table[] PROGMEM = {
     er00, er01, er02, er03, er04, er05, er06, er07, er08, er09, er10, er11,
-    er12, er13, er14
+    er12, er13
 };
 
 #define ERR_STRING_TABLE_LEN \
@@ -1058,7 +1056,7 @@ byte RFLink::receive_noblock(taskid_t* taskid, RXConfig* cfg) {
     *taskid = tsk->taskid;
     tsk->evtsub_pktrcvd = 1;
     if (cfg) {
-        if (cfg->timeout) {
+        if (cfg->def_timeout) {
             tsk->evtsub_wakeup = 1;
             tsk->mtime_wakeup = tsk->mtime_ref + cfg->timeout;
         }
@@ -1141,7 +1139,7 @@ byte RFLink::receive(void* buf, byte buf_len, byte* rec_len,
     if (r == ST_RECEIVE_DATA_AVAILABLE || r == ST_RECEIVE) {
         assert(false);
     } else if (r == ST_NOTHING) {
-        return ERR_RECEIVE_DATA_RECLAIMED_TOO_LATE;
+        return ERR_TIMEOUT;
     } else if (r == ST_RECEIVE_DATA_RETRIEVED) {
         return ERR_OK;
     } else if (r == ST_RECEIVE_TIMEDOUT) {

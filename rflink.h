@@ -40,14 +40,15 @@
 #include <Arduino.h>
 
 #define ENFORCE_MAX_TASK_COUNT_AT_COMPILE_TIME
-#define DEFAULT_MAX_TASK_COUNT                12
+#define DEFAULT_MAX_TASK_COUNT                15
 #define DEFAULT_PRE_ALLOCATE                   0
 #define PKTID_CACHE_SIZE                      10
 
 // Delays below are in milliseconds
 #define DEFAULT_RECEIVE_DATA_AVAIL_DELAY    2000
-#define DEFAULT_RECEIVE_PURGE_DELAY         4000
-#define DEFAULT_RECEIVE_TIMEOUT_DELAY        500
+//#define DEFAULT_RECEIVE_PURGE_DELAY         4000
+#define DEFAULT_RECEIVE_PURGE_DELAY         1000
+#define DEFAULT_RECEIVE_TIMEOUT_DELAY          1
 #define DEFAULT_SEND_PURGE_DELAY            4000
 // The below value makes 49 hours.
 #define CACHE_PKTID_DISCARD_DELAY     4233600000
@@ -64,13 +65,12 @@
 #define ERR_SEND_IO                            5
 #define ERR_SEND_BAD_ARGUMENTS                 6
 #define ERR_SEND_NO_ACK_RCVD                   7
-#define ERR_RECEIVE_DATA_RECLAIMED_TOO_LATE    8
-#define ERR_TASK_CREATED_OK                    9
-#define ERR_UNABLE_TO_CREATE_TASK             10
-#define ERR_UNKNOWN_TASKID                    11
-#define ERR_UNDEFINED                         12
-#define ERR_TASK_UNDERWAY                     13
-#define ERR_TIMEOUT                           14
+#define ERR_TASK_CREATED_OK                    8
+#define ERR_UNABLE_TO_CREATE_TASK              9
+#define ERR_UNKNOWN_TASKID                    10
+#define ERR_UNDEFINED                         11
+#define ERR_TASK_UNDERWAY                     12
+#define ERR_TIMEOUT                           13
 
 // NOTE
 // rflink.cpp assumes an address is 1-byte.
@@ -214,10 +214,17 @@ class Task {
         unsigned char has_received_ack :1;
         unsigned char unattended       :1;
 
+        unsigned char rcv_from_1sender :1;
+
+        address_t addr_rcv_from_1sender;
+
         byte nbsend;
 };
 
 struct RXConfig {
+    unsigned char def_sender     :1;
+    unsigned char def_timeout    :1;
+    unsigned char def_rxcallback :1;
     address_t sender;
     mtime_t timeout;
     void (*rxcallback)(byte res, void* buf, byte buf_len, byte* rec_len);
