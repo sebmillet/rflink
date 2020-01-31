@@ -31,6 +31,9 @@
   <https://www.gnu.org/licenses>.
 */
 
+#include <Arduino.h>
+#include <avr/sleep.h>
+
 #include "rflink.h"
 
 // NOTE
@@ -40,7 +43,8 @@
 // Wrapper' sending schedule without expecting an ACK
 const mtime_t snd_sched[] = {
 //    0, 300, 600
-    0, 400, 900, 2000, 2800, 3900
+//    0, 400, 900, 2000, 2800, 3900
+    0, 200, 550, 1000
 };
 const byte snd_sched_len = (sizeof(snd_sched) / sizeof(*snd_sched));
 
@@ -51,7 +55,8 @@ const byte snd_sched_len = (sizeof(snd_sched) / sizeof(*snd_sched));
 // for this delay.
 const mtime_t snd_expack_sched[] = {
 //    0, 280, 750, 850
-    0, 100, 300, 600, 1000, 3000, 3100, 3800, 3900
+//    0, 100, 300, 600, 1000, 3000, 3100, 3800, 3900
+    0, 100, 450, 900, 1000
 };
 const byte snd_expack_sched_len =
                     (sizeof(snd_expack_sched) / sizeof(*snd_expack_sched));
@@ -333,6 +338,7 @@ RFLink::RFLink(byte maxtask, unsigned char prealloc):
       interrupt_is_attached(0),
       device_addr_has_been_defined(0),
       pre_allocate(prealloc),
+      auto_sleep(0),
       device_addr(0x00),
       last_pktid(0),
       last_taskid(0),
@@ -624,6 +630,10 @@ void RFLink::interrupts_off() {
     }
 }
 
+// FIXME
+//   Timing management won't work with auto_sleep() enabled, during periods
+//   where CPU sleeps.
+//   Not a very big issue though...
 bool RFLink::check_pktid_already_seen(address_t src, pktid_t pktid) {
 
     bool src_found = false;
@@ -790,10 +800,6 @@ void RFLink::do_events() {
         // destroyed.
         tsknext = tsk->next;
 
-#ifdef RFLINK_DEBUG
-        dbg_print_status();
-#endif
-
         byte new_status = tsk->status;
 
         if (tsk->evtsub_pktrcvd && got_a_pkt) {
@@ -855,8 +861,50 @@ void RFLink::do_events() {
         }
     }
 
+    // MANAGE "GO TO SLEEP"
+
+    //   First thing is, to work out whether or not, we are in a status that
+    //   allows to go to sleep.
+    //   The condition is: we are waiting for a packet and that's it (no other
+    //   pending task, no wake-up scheduled)
+
+    byte count_task_evtsub_pktrcvd = 0;
+    byte count_task_evtsub_wakeup = 0;
+    byte count_task_non_nothing = 0;
+    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsk->next) {
+        if (tsk->evtsub_pktrcvd)
+            count_task_evtsub_pktrcvd++;
+        if (tsk->evtsub_wakeup)
+            count_task_evtsub_wakeup++;
+        else if (tsk->status != ST_NOTHING)
+            count_task_non_nothing++;
+    }
+    static bool last_is_eligible_for_sleep = false;
+    bool is_eligible_for_sleep =
+      (count_task_evtsub_pktrcvd == 1
+       && count_task_evtsub_wakeup == 0
+       && count_task_non_nothing == 1);
+
+    if (is_eligible_for_sleep && auto_sleep) {
+        sleep_enable();
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+        dbg("Going to sleep...");
 #ifdef RFLINK_DEBUG
-    dbg_print_status();
+        // Needed to have data sent over the serial line, before going to sleep
+        // really.
+        delay(20);
+#endif
+        sleep_cpu();
+        dbg("WAKE UP!!!");
+    } else if (is_eligible_for_sleep) {
+        if (!last_is_eligible_for_sleep) {
+            dbg("Could go to sleep, but auto_sleep is not activated");
+        }
+    }
+    last_is_eligible_for_sleep = is_eligible_for_sleep;
+
+#ifdef RFLINK_DEBUG
+    dbg_print_status(is_eligible_for_sleep);
 #endif
 
     ET_PRTPERIOD(10000);
@@ -864,7 +912,7 @@ void RFLink::do_events() {
 }
 
 #ifdef RFLINK_DEBUG
-void RFLink::dbg_print_status() {
+void RFLink::dbg_print_status(bool is_eligible_for_sleep) {
     static long unsigned print_status_last_t = get_current_time();
     byte n = 0, a = 0, f = 0, r = 0;
     for (Task* tsk = tskhead; tsk != nullptr; tsk = tsk->next) {
@@ -879,11 +927,12 @@ void RFLink::dbg_print_status() {
             ++r;
     }
     long unsigned t = get_current_time();
-    if ((t - print_status_last_t) >= 5000) {
+    if ((t - print_status_last_t) >= 500) {
         print_status_last_t = t;
         dbgf("do_events: N=%2i A=%2i F=%2i (R=%2i) tskc=%2i"
-               " (mpl=%i) (soT=%i) (fm=%u)", n, a, f, r, task_count,
-               max_payload_len, sizeof(Task), freeMemory());
+               " (mpl=%i) (soT=%i) (fm=%u) (S=%i)",
+               n, a, f, r, task_count, max_payload_len, sizeof(Task),
+               freeMemory(), is_eligible_for_sleep);
     }
 }
 #endif // RFLINK_DEBUG
@@ -1136,6 +1185,8 @@ byte RFLink::receive(void* buf, byte buf_len, byte* rec_len,
     Task* tsk = get_task_by_taskid(taskid);
     r = data_retrieve(tsk, buf, buf_len, rec_len, sender);
 
+    do_events();
+
     if (r == ST_RECEIVE_DATA_AVAILABLE || r == ST_RECEIVE) {
         assert(false);
     } else if (r == ST_NOTHING) {
@@ -1180,6 +1231,10 @@ void RFLink::set_opt(opt_t opt, void* data, byte len) {
 
 void RFLink::set_opt_byte(opt_t opt, byte value) {
     set_opt(opt, &value, sizeof(value));
+}
+
+void RFLink::set_auto_sleep(bool v) {
+    auto_sleep = v;
 }
 
 

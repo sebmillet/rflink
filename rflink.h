@@ -45,13 +45,12 @@
 #define PKTID_CACHE_SIZE                      10
 
 // Delays below are in milliseconds
-#define DEFAULT_RECEIVE_DATA_AVAIL_DELAY    2000
-//#define DEFAULT_RECEIVE_PURGE_DELAY         4000
+#define DEFAULT_RECEIVE_DATA_AVAIL_DELAY     900
 #define DEFAULT_RECEIVE_PURGE_DELAY         1000
-#define DEFAULT_RECEIVE_TIMEOUT_DELAY          1
-#define DEFAULT_SEND_PURGE_DELAY            4000
+#define DEFAULT_RECEIVE_TIMEOUT_DELAY          0
+#define DEFAULT_SEND_PURGE_DELAY            1000
 // The below value makes 49 hours.
-#define CACHE_PKTID_DISCARD_DELAY     4233600000
+#define CACHE_PKTID_DISCARD_DELAY      176400000
 
 #define MIN_DEVICE_RESET_DELAY              1000
 
@@ -265,6 +264,8 @@ class RFLink {
         unsigned char device_addr_has_been_defined :1;
         unsigned char pre_allocate :1;
 
+        unsigned char auto_sleep :1;
+
         address_t device_addr;
 
         pktid_t last_pktid;
@@ -327,6 +328,8 @@ class RFLink {
         void set_opt(opt_t opt, void* data, byte len);
         void set_opt_byte(opt_t opt, byte value);
 
+        void set_auto_sleep(bool v);
+
         void do_events();
 
         byte send_noblock(taskid_t* taskid, address_t dst,
@@ -353,7 +356,7 @@ class RFLink {
         void delay_ms(long int d);
 
 #ifdef RFLINK_DEBUG
-        void dbg_print_status();
+        void dbg_print_status(bool is_eligible_for_sleep);
 #endif
 
 };
