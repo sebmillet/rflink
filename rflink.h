@@ -26,7 +26,7 @@
 #ifndef _RFLINK_H
 #define _RFLINK_H
 
-#define ERR_STRINGS
+//#define ERR_STRINGS
 
 // If DEBUG is activated (said differently: if you uncomment RFLINK_DEBUG), then
 // you got to include the debug library (debug.h, debug.cpp) in the compilation.
@@ -230,7 +230,7 @@ struct RXConfig {
 };
 
 struct RFLinkFunctions {
-    void (*deviceInit)(byte *max_data_len, bool reset_first);
+    void (*deviceInit)(byte *max_data_len, bool reset_only);
     byte (*deviceSend)(const void* data, byte len);
     byte (*deviceReceive)(void* buf, byte buf_len);
     void (*deviceSetOpt)(opt_t opt, void* data, byte len);

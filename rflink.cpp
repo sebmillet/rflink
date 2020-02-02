@@ -44,7 +44,7 @@
 const mtime_t snd_sched[] = {
 //    0, 300, 600
 //    0, 400, 900, 2000, 2800, 3900
-    0, 200, 550, 1000
+    0, 200, 550, 900
 };
 const byte snd_sched_len = (sizeof(snd_sched) / sizeof(*snd_sched));
 
@@ -56,7 +56,7 @@ const byte snd_sched_len = (sizeof(snd_sched) / sizeof(*snd_sched));
 const mtime_t snd_expack_sched[] = {
 //    0, 280, 750, 850
 //    0, 100, 300, 600, 1000, 3000, 3100, 3800, 3900
-    0, 100, 450, 900, 1000
+    0, 100, 450, 800, 900
 };
 const byte snd_expack_sched_len =
                     (sizeof(snd_expack_sched) / sizeof(*snd_expack_sched));
@@ -752,7 +752,7 @@ void RFLink::do_events() {
         }
 
 #ifdef RFLINK_DEBUG
-#if defined(RFLINK_DEBUG) && !defined(RFLINK_DEBUG_EVENTTIMER_ONLY)
+#ifndef RFLINK_DEBUG_EVENTTIMER_ONLY
         const Header* h = recpkt->get_header_ptr();
 #endif
         if (got_a_pkt) {
@@ -823,7 +823,6 @@ void RFLink::do_events() {
             }
         }
 
-
         if (new_status != ST_RECEIVE
               && new_status != ST_NOTHING
               && new_status != ST_FINISHED) {
@@ -852,11 +851,9 @@ void RFLink::do_events() {
         mtime_t now = get_current_time();
         if ((now - last_device_reset) >= MIN_DEVICE_RESET_DELAY) {
             last_device_reset = now;
-
             byte dummy;
             (*funcs.deviceInit)(&dummy, true);
             delay(POST_DEVICE_RESET_DELAY);
-
             dbg("did reset device");
         }
     }
@@ -908,7 +905,6 @@ void RFLink::do_events() {
 #endif
 
     ET_PRTPERIOD(10000);
-
 }
 
 #ifdef RFLINK_DEBUG

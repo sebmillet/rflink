@@ -60,9 +60,13 @@
 CC1101 radio;
 byte syncWord[2] = {0xA9, 0x5A};
 
-void cc1101_init(byte* max_data_len, bool reset_first) {
-    if (reset_first)
+void cc1101_init(byte* max_data_len, bool reset_only) {
+    if (reset_only) {
+        dbg("Resetting radio...");
         radio.reset();
+        dbg("Radio reset done");
+        return;
+    }
     radio.init();
     radio.setSyncWord(syncWord);
     radio.setCarrierFreq(CFREQ_868);
