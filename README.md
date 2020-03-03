@@ -21,13 +21,14 @@ Download a zip of this repository, then include it from the Arduino IDE.
 
 **IMPORTANT**
 You'll also need to install arduino-cc1101 library, available here:
-  [https://github.com/veonik/arduino-cc1101](https://github.com/veonik/arduino-cc1101)
+[https://github.com/veonik/arduino-cc1101](https://github.com/veonik/arduino-cc1101)
 
 
 Usage
 -----
 
-See [examples/sender/sender.ino](examples/sender/sender.ino) and
-[examples/receiver/receiver.ino](examples/receiver/receiver.ino) for an
-example.
+See [examples/example1/sender/sender.ino](examples/example1/sender/sender.ino)
+and
+[examples/example1/receiver/receiver.ino](examples/example1/receiver/receiver.ino)
+for an example.
 

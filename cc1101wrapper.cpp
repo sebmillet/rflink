@@ -71,7 +71,8 @@ void cc1101_init(byte* max_data_len, bool reset_only) {
     radio.setSyncWord(syncWord);
     radio.setCarrierFreq(CFREQ_868);
     radio.enableAddressCheck();
-    *max_data_len = (CCPACKET_DATA_LEN);
+    if (max_data_len)
+        *max_data_len = (CCPACKET_DATA_LEN);
 }
 
 void cc1101_set_opt(opt_t opt, void *data, byte len) {

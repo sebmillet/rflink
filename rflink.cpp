@@ -851,8 +851,7 @@ void RFLink::do_events() {
         mtime_t now = get_current_time();
         if ((now - last_device_reset) >= MIN_DEVICE_RESET_DELAY) {
             last_device_reset = now;
-            byte dummy;
-            (*funcs.deviceInit)(&dummy, true);
+            (*funcs.deviceInit)(nullptr, true);
             delay(POST_DEVICE_RESET_DELAY);
             dbg("did reset device");
         }
@@ -891,7 +890,12 @@ void RFLink::do_events() {
         // really.
         delay(20);
 #endif
+
+//        noInterrupts();
+        (*funcs.deviceInit)(nullptr, true);
+//        interrupts();
         sleep_cpu();
+
         dbg("WAKE UP!!!");
     } else if (is_eligible_for_sleep) {
         if (!last_is_eligible_for_sleep) {
