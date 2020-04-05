@@ -30,7 +30,7 @@
 #include <Arduino.h>
 #include "cc1101wrapper.h"
 
-#define MYADDR       0x5E
+#define MYADDR       0xCE
 #define TXPOWER         0  // 0 = low power, 1 = high power (= long distance)
 
 static RFLink rf;
@@ -50,8 +50,12 @@ void serial_printf(const char *fmt, ...) {
     Serial.print(buffer);
 }
 
+static void serial_begin(long speed) {
+    Serial.begin(speed);
+}
+
 void setup() {
-    Serial.begin(9600);
+    serial_begin(9600);
     cc1101_attach(&rf);
     rf.set_opt_byte(OPT_ADDRESS, MYADDR);
     rf.set_opt_byte(OPT_EMISSION_POWER, TXPOWER);

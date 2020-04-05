@@ -52,10 +52,8 @@
 #include <Arduino.h>
 #include "cc1101wrapper.h"
 
-#define BUTTON0 D03
-
-#define MYADDR       0x0B
-#define TARGETADDR   0x5E
+#define MYADDR       0xAB
+#define TARGETADDR   0xCE
 #define TXPOWER         0  // 0 = low power, 1 = high power (= long distance)
 
 static RFLink rf;
@@ -75,37 +73,25 @@ void serial_printf(const char *fmt, ...) {
     Serial.print(buffer);
 }
 
+static void serial_begin(long speed) {
+    Serial.begin(speed);
+}
+
 void setup() {
-    Serial.begin(9600);
-
-    pinMode(BUTTON0, INPUT);
-
+    serial_begin(9600);
     cc1101_attach(&rf);
+    rf.set_opt_byte(OPT_ADDRESS, MYADDR);
     rf.set_opt_byte(OPT_EMISSION_POWER, TXPOWER);
     serial_printf("Device initialized\n");
 }
 
-unsigned int count = 0;
 char msg[50];
 
 void loop() {
+    static byte count = 0;
 
-    static unsigned long int last_t = millis();
-    unsigned long int t = millis();
-    bool btn0 = (digitalRead(BUTTON0) == HIGH);
-    if (t - last_t >= 200) {
-        last_t = t;
-        serial_printf("Button state: %i\n", btn0);
-    }
-    return;
-
+    snprintf(msg, sizeof(msg), "%i-Msg", count);
     ++count;
-    address_t addr = MYADDR + ((count / 3) % 4);
-    rf.set_opt_byte(OPT_ADDRESS, addr);
-    snprintf(msg, sizeof(msg), "Bonjour de la part de 0x%02x (count=%i) !",
-             addr, count);
-
-    serial_printf("Sending message: '%s'\n", msg);
 
     byte n;
     byte r = rf.send(TARGETADDR, msg, strlen(msg) + 1, true, &n);
