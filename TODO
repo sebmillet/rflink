@@ -1,0 +1,3 @@
+- 'am' script (in examples/example2/test directory) has to be made 'generic',
+  at the moment it contains author' specific paths.
+
