@@ -11,30 +11,33 @@ BOARD1=nano
 PORT0=/dev/ttyUSB0
 PORT1=/dev/ttyUSB1
 
+SND=../examples/example2/sender2/sender2.ino
+RCV=../examples/example2/receiver2/receiver2.ino
+
 OUT0=tmp0.out
 OUT1=tmp1.out
 REFOUT0=ref0.out
 REFOUT1=ref1.out
 
 echo "[S]"
-am -b nano -p /dev/ttyUSB0 ../sender2/sender2.ino
+am -b "${BOARD0}" -p "${PORT0}" "${SND}"
 echo "[R]"
-am -b nano -p /dev/ttyUSB1 ../receiver2/receiver2.ino
+am -b "${BOARD1}" -p "${PORT1}" "${RCV}"
 
 echo ""
 echo "[S]"
-am -b nano -p /dev/ttyUSB0 ../sender2/sender2.ino -n -u
+am -b "${BOARD0}" -p "${PORT0}" "${SND}" -n -u
 echo "[R]"
-am -b nano -p /dev/ttyUSB1 ../receiver2/receiver2.ino -n -u
+am -b "${BOARD1}" -p "${PORT1}" "${RCV}" -n -u
 
 echo ""
 CMD=timeout
 CMD_OPTS="9 am"
 #CMD=am
 #CMD_OPTS=
-"${CMD}" ${CMD_OPTS} -p /dev/ttyUSB0 ../sender2/sender2.ino -n -c -r \
+"${CMD}" ${CMD_OPTS} -p "${PORT0}" "${SND}" -n -c -r \
     --recordfile "${OUT0}" &
-"${CMD}" ${CMD_OPTS} -p /dev/ttyUSB1 ../receiver2/receiver2.ino -n -c -r \
+"${CMD}" ${CMD_OPTS} -p "${PORT1}" "${RCV}" -n -c -r \
     --recordfile "${OUT1}" &
 
 set +e
