@@ -226,6 +226,23 @@ static void from_flags(byte flags, byte* seq, byte* opt) {
 
 
 //
+// RFConfig
+//
+
+RFConfig::RFConfig():
+    deferred_exec_func(nullptr),
+    deferred_exec_pdata(nullptr),
+    def_sender(0),
+    def_timeout(0),
+    def_rxcallback(0),
+    sender(0),
+    timeout(0),
+    rxcallback(nullptr) {
+
+}
+
+
+//
 // Tasks
 //
 
@@ -245,22 +262,30 @@ void RFLink::task_destroy(Task* tsk_to_destroy) {
             previous_tsk->next = tsk_to_destroy->next;
         }
 
+        task_reset(tsk_to_destroy);
         delete tsk_to_destroy;
 #endif
     } else {
         tsk_to_destroy->pktkeeper.release_data();
-        task_initialize(tsk_to_destroy);
+        task_reset(tsk_to_destroy);
     }
 
     --task_count;
 }
 
-void RFLink::task_initialize(Task* tsk) {
+void RFLink::task_reset(Task* tsk) {
     tsk->taskid = 0;
     tsk->status = ST_NOTHING;
     tsk->evtsub_wakeup = 0;
     tsk->evtsub_pktrcvd = 0;
     tsk->last_retcode = ERR_UNDEFINED;
+    tsk->to_execute = 0;
+    tsk->to_destroy = 0;
+
+    if (tsk->cfg) {
+        delete tsk->cfg;
+        tsk->cfg = nullptr;
+    }
 }
 
 Task* RFLink::task_create(byte status) {
@@ -301,9 +326,13 @@ Task* RFLink::task_create(byte status) {
 
     }
 
-    task_initialize(tsk);
+    tsk->cfg = nullptr;
+    task_reset(tsk);
 
-    tsk->taskid = ++last_taskid;
+    ++last_taskid;
+    if (last_taskid == TASKID_NONE)
+        ++last_taskid;
+    tsk->taskid = last_taskid;
     tsk->status = status;
     tsk->mtime_ref = get_current_time();
 
@@ -341,7 +370,7 @@ RFLink::RFLink(byte maxtask, unsigned char prealloc):
       auto_sleep(0),
       device_addr(0x00),
       last_pktid(0),
-      last_taskid(0),
+      last_taskid(TASKID_NONE),
       receive_data_avail_delay(DEFAULT_RECEIVE_DATA_AVAIL_DELAY),
       receive_purge_delay(DEFAULT_RECEIVE_PURGE_DELAY),
       send_purge_delay(DEFAULT_SEND_PURGE_DELAY),
@@ -387,7 +416,7 @@ RFLink::RFLink(byte maxtask, unsigned char prealloc):
         for (byte i = 0; i < max_task_count; ++i) {
             tskhead[i].next =
               (i < max_task_count - 1) ? &tskhead[i + 1] : nullptr;
-            task_initialize(&tskhead[i]);
+            task_reset(&tskhead[i]);
         }
     } else {
         dbg("preallocate = 0");
@@ -604,6 +633,15 @@ byte RFLink::tev_wakeup(Task* tsk) {
         tsk->evtsub_wakeup = 1;
         tsk->mtime_wakeup = tsk->mtime_ref + DEFAULT_RECEIVE_TIMEOUT_DELAY;
         return ST_RECEIVE_TIMEDOUT;
+    } else if (tsk->status == ST_DEFERRED_EXEC) {
+        if (tsk->cfg && tsk->cfg->deferred_exec_func) {
+            (*tsk->cfg->deferred_exec_func)(tsk->cfg->deferred_exec_pdata);
+        } else {
+            // A deferred exec task should always own a config in which
+            // deferred_exec_func is non-null.
+            assert(false);
+        }
+        return ST_FINISHED;
     } else {
         // Execution shall never arrive here
         assert(false);
@@ -705,6 +743,14 @@ bool RFLink::check_pktid_already_seen(address_t src, pktid_t pktid) {
     return ret;
 }
 
+// * NOTE ABOUT 'to_execute' ATTRIBUTE *
+// It is used to 'freeze' the task list to execute at the beginning of
+// do_events().
+// That is, tasks created along the way of do_events execution WILL NOT be
+// executed during the same loop - when created, the to_execute attribute is set
+// to 0. Only at the end of do_events do we set this attribute for all tasks,
+// that means, the tasks created will later be executed normally.
+// This mechanism is meant as a safeguard against reentrant calls.
 void RFLink::do_events() {
 
     if (!funcs.deviceInit)
@@ -793,12 +839,10 @@ void RFLink::do_events() {
 
     bool device_needs_reset = false;
 
-    Task* tsknext;
-    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsknext) {
+    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsk->next) {
 
-        // We must record what the next task is, in case our current tsk gets
-        // destroyed.
-        tsknext = tsk->next;
+        if (!tsk->to_execute)
+            continue;
 
         byte new_status = tsk->status;
 
@@ -837,7 +881,7 @@ void RFLink::do_events() {
                   && tsk->need_ack && !tsk->has_received_ack) {
                 device_needs_reset = true;
             }
-            task_destroy(tsk);
+            tsk->to_destroy = 1;
         } else {
             tsk->status = new_status;
         }
@@ -903,6 +947,20 @@ void RFLink::do_events() {
         }
     }
     last_is_eligible_for_sleep = is_eligible_for_sleep;
+
+    Task* tsknext;
+    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsknext) {
+        tsknext = tsk->next;
+        if (tsk->to_destroy) {
+            task_destroy(tsk);
+        }
+    }
+
+    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsk->next) {
+        if (tsk->status != ST_NOTHING && !tsk->to_execute) {
+            tsk->to_execute = 1;
+        }
+    }
 
 #ifdef RFLINK_DEBUG
     dbg_print_status(is_eligible_for_sleep);
@@ -1091,7 +1149,7 @@ byte RFLink::send(address_t dst, const void* data, byte len, bool ack,
     return send_get_final_status(taskid, nbsend);
 }
 
-byte RFLink::receive_noblock(taskid_t* taskid, RXConfig* cfg) {
+byte RFLink::receive_noblock(taskid_t* taskid, RFConfig* cfg) {
     if (!funcs.deviceInit)
         return ERR_DEVICE_NOT_REGISTERED;
     else if (!funcs.deviceReceive)
@@ -1165,7 +1223,7 @@ byte RFLink::data_retrieve(Task* tsk, void* buf, byte buf_len, byte* rec_len,
 }
 
 byte RFLink::receive(void* buf, byte buf_len, byte* rec_len,
-                     address_t* sender, RXConfig* cfg) {
+                     address_t* sender, RFConfig* cfg) {
     taskid_t taskid;
     byte r = receive_noblock(&taskid, cfg);
 
@@ -1210,6 +1268,38 @@ void RFLink::delay_ms(long int d) {
     unsigned long int t0 = get_current_time();
     while ((signed)(get_current_time() - t0) < d) {
         do_events();
+    }
+}
+
+
+taskid_t RFLink::deferred_exec(mtime_t delay,
+                               void (*deferred_exec_func)(void *data),
+                               void* deferred_exec_pdata) {
+
+    // Not allowed to defer execution of nothing
+    assert(deferred_exec_func);
+
+    Task* tsk = task_create(ST_DEFERRED_EXEC);
+    if (!tsk) {
+        return TASKID_NONE;
+    }
+
+    RFConfig* cfg = new RFConfig;
+    tsk->cfg = cfg;
+
+    cfg->deferred_exec_func = deferred_exec_func;
+    cfg->deferred_exec_pdata = deferred_exec_pdata,
+    tsk->evtsub_wakeup = 1;
+    tsk->mtime_wakeup = tsk->mtime_ref + delay;
+
+    return tsk->taskid;
+}
+
+void RFLink::cancel_deferred_exec() {
+    for (Task* tsk = tskhead; tsk != nullptr; tsk = tsk->next) {
+        if (tsk->status == ST_DEFERRED_EXEC) {
+            tsk->to_destroy = 1;
+        }
     }
 }
 

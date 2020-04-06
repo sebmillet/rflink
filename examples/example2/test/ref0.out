@@ -1,0 +1,31 @@
+-----BEGIN ARDUINO OUTPUT-----
+Device initialized
+Message send successful (received ACK)
+Message send successful (received ACK)
+Message send successful (received ACK)
+deferred() execution, data = 0
+Message send successful (received ACK)
+deferred() execution, data = 0x1
+Message send successful (received ACK)
+deferred() execution, data = 0x2
+Message send successful (received ACK)
+deferred() execution, data = 0x3
+Message send successful (received ACK)
+deferred() execution, data = 0x4
+Message send successful (received ACK)
+deferred() execution, data = 0x5
+Message send successful (received ACK)
+deferred() execution, data = 0x6
+Message send successful (received ACK)
+deferred() execution, data = 0x7
+Message send successful (received ACK)
+deferred() execution, data = 0x8
+Message send successful (received ACK)
+deferred() execution, data = 0x9
+Message send successful (received ACK)
+deferred() execution, data = 0xa
+Message send successful (received ACK)
+deferred() execution, data = 0xb
+Message send successful (received ACK)
+deferred() execution, data = 0xc
+-----END ARDUINO OUTPUT-----

@@ -1,0 +1,42 @@
+-----BEGIN ARDUINO OUTPUT-----
+Device initialized
+Received from 0xab: '1-Msg'
+Received from 0xab: '2-Msg'
+Deferring action by 2250 millisecond(s)
+deferred() execution, data = 0x64
+Received from 0xab: '3-Msg'
+deferred() execution, data = 0x65
+Received from 0xab: '4-Msg'
+Deferring action by 750 millisecond(s)
+deferred() execution, data = 0x66
+Received from 0xab: '5-Msg'
+deferred() execution, data = 0x3
+deferred() execution, data = 0x67
+Received from 0xab: '6-Msg'
+Deferring action by 2250 millisecond(s)
+deferred() execution, data = 0x1
+deferred() execution, data = 0x68
+Received from 0xab: '7-Msg'
+deferred() execution, data = 0x69
+Received from 0xab: '8-Msg'
+Deferring action by 750 millisecond(s)
+deferred() execution, data = 0x6a
+Received from 0xab: '9-Msg'
+called cancel_deferred_exec()
+Received from 0xab: '10-Msg'
+Deferring action by 2250 millisecond(s)
+Received from 0xab: '11-Msg'
+deferred() execution, data = 0x6d
+Received from 0xab: '12-Msg'
+Deferring action by 750 millisecond(s)
+deferred() execution, data = 0x6e
+Received from 0xab: '13-Msg'
+deferred() execution, data = 0xb
+deferred() execution, data = 0x6f
+Received from 0xab: '14-Msg'
+Deferring action by 2250 millisecond(s)
+deferred() execution, data = 0x9
+deferred() execution, data = 0x70
+Received from 0xab: '15-Msg'
+deferred() execution, data = 0x71
+-----END ARDUINO OUTPUT-----

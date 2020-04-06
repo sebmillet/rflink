@@ -177,6 +177,7 @@ enum {
     ST_RECEIVE_DATA_AVAILABLE,
     ST_RECEIVE_DATA_RETRIEVED,
     ST_RECEIVE_TIMEDOUT,
+    ST_DEFERRED_EXEC,
     ST_FINISHED,
     ST_LAST
 };
@@ -184,6 +185,26 @@ enum {
 #define T_NONE      0
 #define T_EVWAKEUP  (1 << 0)
 #define T_EVPKTRCVD (1 << 1)
+
+#define TASKID_NONE 0
+
+class RFConfig {
+    friend class RFLink;
+
+    private:
+        void (*deferred_exec_func)(void *pdata);
+        void* deferred_exec_pdata;
+
+    public:
+        RFConfig();
+
+        unsigned char def_sender     :1;
+        unsigned char def_timeout    :1;
+        unsigned char def_rxcallback :1;
+        address_t sender;
+        mtime_t timeout;
+        void (*rxcallback)(byte res, void* buf, byte buf_len, byte* rec_len);
+};
 
 class Task {
     friend class RFLink;
@@ -213,20 +234,12 @@ class Task {
         unsigned char has_received_ack :1;
         unsigned char unattended       :1;
 
-        unsigned char rcv_from_1sender :1;
-
-        address_t addr_rcv_from_1sender;
+        unsigned char to_execute       :1;
+        unsigned char to_destroy       :1;
 
         byte nbsend;
-};
 
-struct RXConfig {
-    unsigned char def_sender     :1;
-    unsigned char def_timeout    :1;
-    unsigned char def_rxcallback :1;
-    address_t sender;
-    mtime_t timeout;
-    void (*rxcallback)(byte res, void* buf, byte buf_len, byte* rec_len);
+        RFConfig *cfg;
 };
 
 struct RFLinkFunctions {
@@ -302,7 +315,7 @@ class RFLink {
         void interrupts_off();
 
         void task_destroy(Task* tsk);
-        void task_initialize(Task* tsk);
+        void task_reset(Task* tsk);
         Task* task_create(byte status);
 
         bool check_pktid_already_seen(address_t src, pktid_t pktid);
@@ -344,16 +357,21 @@ class RFLink {
         byte tev_received(Task* tsk, PktKeeper* pk, bool pktid_already_seen,
                           bool* pkt_consumed);
 
-        byte receive_noblock(taskid_t* taskid, RXConfig* cfg = nullptr);
+        byte receive_noblock(taskid_t* taskid, RFConfig* cfg = nullptr);
         byte data_retrieve(Task* tsk, void* buf, byte buf_len, byte* rec_len,
                            address_t* sender);
         byte receive(void* buf, byte buf_len, byte* rec_len,
-                     address_t* sender = nullptr, RXConfig* cfg = nullptr);
+                     address_t* sender = nullptr, RFConfig* cfg = nullptr);
 
         void data_retrieved_post(Task* tsk);
         byte task_get_status(taskid_t taskid);
 
         void delay_ms(long int d);
+
+        taskid_t deferred_exec(mtime_t delay,
+                               void (*deferred_exec_func)(void *data),
+                               void* deferred_exec_pdata);
+        void cancel_deferred_exec();
 
 #ifdef RFLINK_DEBUG
         void dbg_print_status(bool is_eligible_for_sleep);

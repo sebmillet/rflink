@@ -52,6 +52,8 @@
 #include <Arduino.h>
 #include "cc1101wrapper.h"
 
+#include "MemoryFree.h"
+
 #define MYADDR       0xAB
 #define TARGETADDR   0xCE
 #define TXPOWER         0  // 0 = low power, 1 = high power (= long distance)
@@ -78,20 +80,25 @@ static void serial_begin(long speed) {
 }
 
 void setup() {
-    serial_begin(9600);
+//    serial_begin(9600);
+    serial_begin(115200);
     cc1101_attach(&rf);
     rf.set_opt_byte(OPT_ADDRESS, MYADDR);
     rf.set_opt_byte(OPT_EMISSION_POWER, TXPOWER);
     serial_printf("Device initialized\n");
 }
 
+void deferred(void *data) {
+    serial_printf("deferred() execution, data = %p\n", data);
+}
+
 char msg[50];
 
 void loop() {
     static byte count = 0;
+    static char* pdata = nullptr;
 
-    snprintf(msg, sizeof(msg), "%i-Msg", count);
-    ++count;
+    snprintf(msg, sizeof(msg), "%i-Msg", ++count);
 
     byte n;
     byte r = rf.send(TARGETADDR, msg, strlen(msg) + 1, true, &n);
@@ -100,6 +107,20 @@ void loop() {
     } else {
         serial_printf("Message send successful (received ACK)\n");
     }
-    rf.delay_ms(5000);
+
+    rf.delay_ms(490);
+//    rf.delay_ms(20485);
+
+    rf.deferred_exec(720, deferred, pdata++);
+//    serial_printf("free memory = %i\n", freeMemory());
+
+    // Safeguard.
+    // Don't want to spread neverending RF signal if board is inadvertently left
+    // running.
+    if (count == 30) {
+        serial_printf("Now stopping.\n");
+        while (1)
+            ;
+    }
 }
 

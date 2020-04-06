@@ -30,6 +30,8 @@
 #include <Arduino.h>
 #include "cc1101wrapper.h"
 
+#include "MemoryFree.h"
+
 #define MYADDR       0xCE
 #define TXPOWER         0  // 0 = low power, 1 = high power (= long distance)
 
@@ -55,7 +57,8 @@ static void serial_begin(long speed) {
 }
 
 void setup() {
-    serial_begin(9600);
+//    serial_begin(9600);
+    serial_begin(115200);
     cc1101_attach(&rf);
     rf.set_opt_byte(OPT_ADDRESS, MYADDR);
     rf.set_opt_byte(OPT_EMISSION_POWER, TXPOWER);
@@ -64,7 +67,13 @@ void setup() {
 
 char buffer[50];
 
+void deferred(void *data) {
+    serial_printf("deferred() execution, data = %p\n", data);
+}
+
 void loop() {
+    static char* pdata = nullptr;
+
     byte len, sender, r;
     if ((r = rf.receive(&buffer, sizeof(buffer), &len, &sender)) != ERR_OK) {
         serial_printf("Reception error: %s\n", rf.get_err_string(r));
@@ -73,6 +82,20 @@ void loop() {
             len = sizeof(buffer) - 1;
         buffer[len] = '\0';  // In case received message would be not-a-string
         serial_printf("Received from 0x%02x: '%s'\n", sender, buffer);
+        byte n = atoi(buffer);
+        if (!(n % 2)) {
+            mtime_t d = ((n / 2) % 2) * 1500 + 750;
+            serial_printf("Deferring action by %lu millisecond(s)\n", d);
+            rf.deferred_exec(d, deferred, pdata);
+        }
+        rf.deferred_exec(790, deferred, 100 + pdata);
+
+        if (!(n % 9)) {
+            rf.cancel_deferred_exec();
+            serial_printf("called cancel_deferred_exec()\n");
+        }
     }
+    ++pdata;
+//    serial_printf("free memory = %i\n", freeMemory());
 }
 
