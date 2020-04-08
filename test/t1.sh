@@ -10,6 +10,7 @@ BOARD0=nano
 BOARD1=nano
 PORT0=/dev/ttyUSB0
 PORT1=/dev/ttyUSB1
+AMEXE=./am
 
 SND=../examples/example2/sender2/sender2.ino
 RCV=../examples/example2/receiver2/receiver2.ino
@@ -20,20 +21,20 @@ REFOUT0=ref0.out
 REFOUT1=ref1.out
 
 echo "[S]"
-am -b "${BOARD0}" -p "${PORT0}" "${SND}"
+"${AMEXE}" -b "${BOARD0}" -p "${PORT0}" "${SND}"
 echo "[R]"
-am -b "${BOARD1}" -p "${PORT1}" "${RCV}"
+"${AMEXE}" -b "${BOARD1}" -p "${PORT1}" "${RCV}"
 
 echo ""
 echo "[S]"
-am -b "${BOARD0}" -p "${PORT0}" "${SND}" -n -u
+"${AMEXE}" -b "${BOARD0}" -p "${PORT0}" "${SND}" -n -u
 echo "[R]"
-am -b "${BOARD1}" -p "${PORT1}" "${RCV}" -n -u
+"${AMEXE}" -b "${BOARD1}" -p "${PORT1}" "${RCV}" -n -u
 
 echo ""
 CMD=timeout
-CMD_OPTS="9 am"
-#CMD=am
+CMD_OPTS="9 "${AMEXE}""
+#CMD="${AMEXE}"
 #CMD_OPTS=
 "${CMD}" ${CMD_OPTS} -p "${PORT0}" "${SND}" -n -c -r \
     --recordfile "${OUT0}" &
@@ -42,7 +43,8 @@ CMD_OPTS="9 am"
 
 set +e
 
-while pgrep "\<am\>" > /dev/null; do
+AMEXE_BASE=$(basename "${AMEXE}")
+while pgrep "\<${AMEXE_BASE}\>" > /dev/null; do
     sleep 1
 done
 

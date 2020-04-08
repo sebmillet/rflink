@@ -108,7 +108,7 @@ void loop() {
         serial_printf("Message send successful (received ACK)\n");
     }
 
-    rf.delay_ms(490);
+    rf.delay_ms(488);
 //    rf.delay_ms(20485);
 
     rf.deferred_exec(720, deferred, pdata++);
