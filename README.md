@@ -32,3 +32,14 @@ and
 [examples/example1/receiver/receiver.ino](examples/example1/receiver/receiver.ino)
 for an example.
 
+There are other examples available:
+
+- examples/example1
+
+    Simple RFLink usage
+
+- examples/example2
+
+    Use of deferred executions + used by test/t1.sh to do tests (need 2 boards
+    each having a RF circuit like CC1101 plugged on).
+
